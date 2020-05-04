@@ -1,0 +1,80 @@
+---
+- name: This is a playbook to test out connecting to ovirt
+  hosts: localhost
+  gather_facts: False
+  
+  vars:
+    domain_name: croftvillas.com
+    rhev_manager_host: "rhvm.internal.{{ domain_name }}"
+    ovirt_username: admin@internal
+    cluster_name: "lab"
+    cluster_version: '4.4.2'
+    operating_system: 'mac'
+    storage_domain: "QNAP_ISCSI"
+    openshift_clients_url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ cluster_version }}"
+
+
+
+  tasks:
+  - include_vars: ovirt_Password.yml
+  - block:
+    - name: Obtain SSO token using username/password creds.
+      ovirt_auth:
+        url: "https://{{ rhev_manager_host }}/ovirt-engine/api"
+        username: "{{ ovirt_username }}"
+        ca_file: ../pki-resource.cer
+        insecure: yes
+        password: "{{ ovirt_password }}"
+
+    - ovirt_storage_domain_info:
+        auth: "{{ ovirt_auth }}"
+        pattern: name="{{ storage_domain }}" and datacenter=OakCottage
+      register: result
+    - set_fact:
+        storage_id: "{{ result.ovirt_storage_domains[0].id }}"
+
+    - ovirt_network_info:
+        auth: "{{ ovirt_auth }}"
+        pattern: name="{{ cluster_name }}*"
+      register: result
+    - set_fact:
+        vlan_id: "{{ result.ovirt_networks[0].vlan.id }}"   
+    - name: Download the installer file
+      unarchive:
+        src: "{{ openshift_clients_url }}/openshift-install-{{ operating_system }}-{{ cluster_version }}.tar.gz"
+        dest: "./"
+        remote_src: yes
+  
+    - name: Download openshift client
+      unarchive:
+        src: "{{ openshift_clients_url }}/openshift-client-{{ operating_system }}-{{ cluster_version }}.tar.gz"
+        dest: "./"
+        remote_src: yes
+
+    - name: Create a directory if it does not exist
+      file:
+        path: "./{{ cluster_name }}/.ovirt"
+        state: directory
+
+    - name: Fix up the install config
+      template:
+        src: templates/install-config.yaml.j2
+        dest: "./{{ cluster_name }}/install-config.yaml"
+    
+    - name: Create the creds file for terraform
+      template:
+        src: templates/ovirt-config.yaml.j2
+        dest: "./{{ cluster_name }}/.ovirt/ovirt-config.yaml"
+
+    - name: Do the install
+      command: "./openshift-install create cluster --dir={{ cluster_name }}"
+      environment:
+        OVIRT_CONFIG: "lab/.ovirt/ovirt-config.yaml"
+        TF_VAR_ovirt_master_mem: "16384"
+        TF_VAR_ovirt_password: "{{ ovirt_password }}"
+
+    always:
+    - name: Always revoke the SSO token
+      ovirt_auth:
+        state: absent
+        ovirt_auth: "{{ ovirt_auth }}"

@@ -1,0 +1,37 @@
+apiVersion: v1
+baseDomain: {{ domain_name }}
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform: {}
+  replicas: 2
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform: {}
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: {{ cluster_name }}
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  ovirt:
+    api_vip: 192.168.{{ vlan_id }}.99
+    dns_vip: 192.168.{{ vlan_id }}.101
+    ingress_vip: 192.168.{{ vlan_id }}.100
+    ovirt_cluster_id: 6384628f-63aa-4102-88b9-b460165c7af8
+    ovirt_network_name: lab_network
+    ovirt_storage_domain_id: {{ storage_id }}
+publish: External
+pullSecret: '{{ pull_secret }}'
+sshKey: '{{ ssh_key }}'
