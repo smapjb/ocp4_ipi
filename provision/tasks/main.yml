@@ -52,9 +52,8 @@
   - name: Do the install
     command: "./openshift-install create cluster --dir={{ cluster_name }}"
     environment:
-      OVIRT_CONFIG: "lab/.ovirt/ovirt-config.yaml"
+      OVIRT_CONFIG: "./lab/.ovirt/ovirt-config.yaml"
       TF_VAR_ovirt_master_mem: "16384"
-      TF_VAR_ovirt_password: "{{ ovirt_password }}"
 
   always:
   - name: Always revoke the SSO token
