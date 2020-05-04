@@ -1,0 +1,10 @@
+---
+# defaults file for provision
+domain_name: croftvillas.com
+rhev_manager_host: "rhvm.internal.{{ domain_name }}"
+ovirt_username: admin@internal
+cluster_name: "lab"
+cluster_version: '4.4.3'
+operating_system: 'linux'
+storage_domain: "QNAP_ISCSI"
+openshift_clients_url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ cluster_version }}"
