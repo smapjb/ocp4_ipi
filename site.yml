@@ -1,2 +1,7 @@
 ---
-- import_playbook: provision.yaml
+- name: This is a playbook to test out connecting to ovirt
+  hosts: localhost
+  gather_facts: False
+  
+  roles:
+    - provision
