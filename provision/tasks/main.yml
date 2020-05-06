@@ -52,7 +52,7 @@
   - name: Do the install
     command: "./openshift-install create cluster --dir={{ cluster_name }}"
     environment:
-      OVIRT_CONFIG: "./lab/.ovirt/ovirt-config.yaml"
+      OVIRT_CONFIG: "./{{ cluster_name }}/.ovirt/ovirt-config.yaml"
       TF_VAR_ovirt_master_mem: "16384"
 
   - name: Print the kubeconfig file to stdout

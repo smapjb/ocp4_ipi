@@ -30,7 +30,7 @@ platform:
     dns_vip: 192.168.{{ vlan_id }}.101
     ingress_vip: 192.168.{{ vlan_id }}.100
     ovirt_cluster_id: 6384628f-63aa-4102-88b9-b460165c7af8
-    ovirt_network_name: lab_network
+    ovirt_network_name: {{ cluster_name }}_network
     ovirt_storage_domain_id: {{ storage_id }}
 publish: External
 pullSecret: '{{ pull_secret }}'
