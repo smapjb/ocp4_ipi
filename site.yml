@@ -3,5 +3,124 @@
   hosts: localhost
   gather_facts: False
   
+  collections:
+    - community.kubernetes
+
   roles:
     - provision
+
+  tasks:
+    - include_vars: ./ovirt_Password.yml
+
+    - name: Create the objects required to run guest agent as a daemonset
+      k8s:
+        state: present
+        src: ./files/guest-agent.yaml
+
+    - name: Create role for Guest agent
+      k8s:
+        state: present
+        definition:
+          kind: ClusterRole
+          apiVersion: rbac.authorization.k8s.io/v1
+          metadata:
+            name: 'qemu-ga:qemu-ga'
+            labels:
+              app: qemu-ga
+          rules:
+            - verbs:
+                - get
+                - list
+                - watch
+              apiGroups:
+                - ''
+              resources:
+                - services
+                - endpoints
+                - nodes
+            - verbs:
+                - create
+                - patch
+              apiGroups:
+                - ''
+              resources:
+                - events
+            - verbs:
+                - use
+              apiGroups:
+                - extensions
+              resources:
+                - podsecuritypolicies
+              resourceNames:
+                - qemu-ga
+
+    - name: Make sure that the ldap user has admin rights
+      k8s:
+        state: present
+        definition:
+          kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          metadata:
+            name: cluster-admin-0
+          subjects:
+            - kind: User
+              apiGroup: rbac.authorization.k8s.io
+              name: philipc
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+    - name: Create the ldap secret
+      k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: ldap-secret
+            namespace: openshift-config
+          stringData:
+            bindPassword: "{{ bind_password }}"
+          type: Opaque
+    - name: Configure ldap server
+      k8s:
+        state: present
+        definition:
+          apiVersion: config.openshift.io/v1
+          kind: OAuth
+          metadata:
+            name: cluster
+          spec:
+            identityProviders:
+            - name: OakCottage
+              mappingMethod: claim 
+              type: LDAP
+              ldap:
+                attributes:
+                  name: 
+                  - givenName
+                  id: 
+                  - dn
+                  email: 
+                  - mail
+                  preferredUsername: 
+                  - uid
+                bindDN: "cn=manager,ou=Internal,dc=internal,dc=croftvillas,dc=com" 
+                bindPassword: 
+                  name: ldap-secret
+                insecure: false 
+                url: "ldaps://gateway.internal.croftvillas.com:636/ou=Users,ou=Accounts,dc=internal,dc=croftvillas,dc=com?uid"
+
+    - name: Finally remove kubeadmin from kubesystem
+      k8s:
+        state: absent
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: kubeadmin
+            namespace: kube-system
+  
+  environment:
+#    KUBECONFIG: "~/.kube/kubeconfig"
+    KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig

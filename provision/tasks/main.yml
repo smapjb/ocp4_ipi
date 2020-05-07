@@ -20,17 +20,13 @@
       auth: "{{ ovirt_auth }}"
       pattern: name="{{ cluster_name }}*"
     register: result
+
   - set_fact:
       vlan_id: "{{ result.ovirt_networks[0].vlan.id }}"   
+
   - name: Download the installer file
     unarchive:
       src: "{{ openshift_clients_url }}/openshift-install-{{ operating_system }}-{{ cluster_version }}.tar.gz"
-      dest: "./"
-      remote_src: yes
-
-  - name: Download openshift client
-    unarchive:
-      src: "{{ openshift_clients_url }}/openshift-client-{{ operating_system }}-{{ cluster_version }}.tar.gz"
       dest: "./"
       remote_src: yes
 
