@@ -12,47 +12,52 @@
   tasks:
     - include_vars: ./ovirt_Password.yml
 
+    - name: Enable the image registry - wait until success
+      k8s:
+        state: present
+        definition:
+          kind: Config
+          apiVersion: imageregistry.operator.openshift.io/v1
+          metadata:
+            name: cluster
+          spec:
+            managementState: Managed
+            defaultRoute: true
+            storage:
+              emptyDir: {}
+        wait: yes
+        wait_timeout: 300
+    
+    - name: Update the default route to something memorable
+      k8s:
+        state: present
+        definition:
+          kind: Route
+          apiVersion: route.openshift.io/v1
+          metadata:
+            name: default-route
+            namespace: openshift-image-registry
+          spec:
+            host: "registry.{{ cluster_name }}.{{ domain_name }}"
+
     - name: Create the objects required to run guest agent as a daemonset
       k8s:
         state: present
         src: ./files/guest-agent.yaml
 
-    - name: Create role for Guest agent
+# Note that the result of the merge is that the list is replaced
+    - name: Merge list of privileged users into the SCC
       k8s:
         state: present
         definition:
-          kind: ClusterRole
-          apiVersion: rbac.authorization.k8s.io/v1
+          kind: SecurityContextConstraints
+          apiVersion: security.openshift.io/v1
           metadata:
-            name: 'qemu-ga:qemu-ga'
-            labels:
-              app: qemu-ga
-          rules:
-            - verbs:
-                - get
-                - list
-                - watch
-              apiGroups:
-                - ''
-              resources:
-                - services
-                - endpoints
-                - nodes
-            - verbs:
-                - create
-                - patch
-              apiGroups:
-                - ''
-              resources:
-                - events
-            - verbs:
-                - use
-              apiGroups:
-                - extensions
-              resources:
-                - podsecuritypolicies
-              resourceNames:
-                - qemu-ga
+            name: privileged
+          users:
+          - system:admin
+          - system:serviceaccount:openshift-infra:build-controller
+          - system:serviceaccount:qemu-ga:qemu-ga
 
     - name: Make sure that the ldap user has admin rights
       k8s:
@@ -70,6 +75,7 @@
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
             name: cluster-admin
+
     - name: Create the ldap secret
       k8s:
         state: present
@@ -82,6 +88,7 @@
           stringData:
             bindPassword: "{{ bind_password }}"
           type: Opaque
+
     - name: Configure ldap server
       k8s:
         state: present
