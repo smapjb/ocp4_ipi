@@ -12,6 +12,10 @@
   tasks:
     - include_vars: ./ovirt_Password.yml
 
+    - set_fact:
+        one_fact: something
+        cacheable: yes
+
     - name: Enable the image registry - wait until success
       k8s:
         state: present
