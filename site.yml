@@ -12,10 +12,6 @@
   tasks:
     - include_vars: ./ovirt_Password.yml
 
-    - name: Adding a long pause to see whether failure is a timing issue.
-      wait_for:
-        timeout: 300
-
     - name: Enable the image registry - wait until success
       k8s:
         state: present
@@ -32,18 +28,6 @@
         wait: yes
         wait_timeout: 300
     
-    - name: Update the default route to something memorable
-      k8s:
-        state: present
-        definition:
-          kind: Route
-          apiVersion: route.openshift.io/v1
-          metadata:
-            name: default-route
-            namespace: openshift-image-registry
-          spec:
-            host: "registry.{{ cluster_name }}.{{ domain_name }}"
-
     - name: Create the objects required to run guest agent as a daemonset
       k8s:
         state: present
@@ -121,6 +105,20 @@
                   name: ldap-secret
                 insecure: false 
                 url: "ldaps://gateway.internal.croftvillas.com:636/ou=Users,ou=Accounts,dc=internal,dc=croftvillas,dc=com?uid"
+
+    - name: Update the default route for the registry to something memorable
+      k8s:
+        state: present
+        definition:
+          kind: Route
+          apiVersion: route.openshift.io/v1
+          metadata:
+            name: default-route
+            namespace: openshift-image-registry
+          spec:
+            host: "registry.{{ cluster_name }}.{{ domain_name }}"
+            to:
+              name: image-registry
 
     - name: Finally remove kubeadmin from kubesystem
       k8s:
