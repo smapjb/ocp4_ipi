@@ -1,5 +1,18 @@
 ---
 - include_vars: ../ovirt_Password.yml
+
+- name: Check to see whether the cluster is already up
+  uri:
+    url: https://api.{{ cluster_name }}.{{ domain_name }}:6443/
+    validate_certs: no
+    status_code: 403
+  register: status
+  failed_when: false
+
+- name: Set fact with cluster exists
+  set_fact:
+    cluster_exists: "{{ status.status == 403 }}"
+
 - block:
   - name: Obtain SSO token using username/password creds.
     ovirt_auth:
@@ -64,3 +77,4 @@
     ovirt_auth:
       state: absent
       ovirt_auth: "{{ ovirt_auth }}"
+  when: not cluster_exists | bool
