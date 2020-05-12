@@ -131,5 +131,4 @@
             namespace: kube-system
   
   environment:
-#    KUBECONFIG: "~/.kube/kubeconfig"
-    KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig
+    K8S_AUTH_KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig
