@@ -1,0 +1,164 @@
+---
+# tasks file for integration
+- include_vars: ./ovirt_Password.yml
+
+- name: Enable the image registry - wait until success
+  k8s:
+    state: present
+    definition:
+      kind: Config
+      apiVersion: imageregistry.operator.openshift.io/v1
+      metadata:
+        name: cluster
+      spec:
+        managementState: Managed
+        defaultRoute: true
+        storage:
+          emptyDir: {}
+    wait: yes
+    wait_timeout: 300
+
+- name: Create the objects required to run guest agent as a daemonset
+  k8s:
+    state: present
+    src: files/guest-agent.yaml
+
+# Note that the result of the merge is that the list is replaced
+- name: Merge list of privileged users into the SCC
+  k8s:
+    state: present
+    definition:
+      kind: SecurityContextConstraints
+      apiVersion: security.openshift.io/v1
+      metadata:
+        name: privileged
+      users:
+      - system:admin
+      - system:serviceaccount:openshift-infra:build-controller
+      - system:serviceaccount:qemu-ga:qemu-ga
+
+- name: Make sure that the ldap user has admin rights
+  k8s:
+    state: present
+    definition:
+      kind: ClusterRoleBinding
+      apiVersion: rbac.authorization.k8s.io/v1
+      metadata:
+        name: cluster-admin-0
+      subjects:
+        - kind: User
+          apiGroup: rbac.authorization.k8s.io
+          name: philipc
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+
+- name: Create the ldap secret
+  k8s:
+    state: present
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: ldap-secret
+        namespace: openshift-config
+      stringData:
+        bindPassword: "{{ bind_password }}"
+      type: Opaque
+
+- name: Configure ldap server
+  k8s:
+    state: present
+    definition:
+      apiVersion: config.openshift.io/v1
+      kind: OAuth
+      metadata:
+        name: cluster
+      spec:
+        identityProviders:
+        - name: OakCottage
+          mappingMethod: claim 
+          type: LDAP
+          ldap:
+            attributes:
+              name: 
+              - givenName
+              id: 
+              - dn
+              email: 
+              - mail
+              preferredUsername: 
+              - uid
+            bindDN: "cn=manager,ou=Internal,dc=internal,dc=croftvillas,dc=com" 
+            bindPassword: 
+              name: ldap-secret
+            insecure: false 
+            url: "ldaps://gateway.internal.croftvillas.com:636/ou=Users,ou=Accounts,dc=internal,dc=croftvillas,dc=com?uid"
+
+- name: Update the default route for the registry to something memorable
+  k8s:
+    state: present
+    definition:
+      kind: Route
+      apiVersion: route.openshift.io/v1
+      metadata:
+        name: default-route
+        namespace: openshift-image-registry
+      spec:
+        host: "registry.{{ cluster_name }}.{{ domain_name }}"
+        to:
+          name: image-registry
+
+- name: Get the LetsEncrypt certs from CA gateway
+  fetch:
+    src: "/etc/letsencrypt/live/api.{{ cluster_name }}.{{ domain_name }}/{{ item }}"
+    dest: "./{{ cluster_name }}/files/"
+    flat: yes  
+  remote_user: root
+  delegate_to: "{{ gateway }}"
+  with_items:
+    - fullchain.cer
+    - "api.{{ cluster_name }}.{{ domain_name }}.key"
+
+- name: Install the wildcard tls certs
+  k8s:
+    state: present
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: router-certs
+        namespace: openshift-ingress
+      data:
+        tls.crt: >-
+            {{ lookup('file', './' + cluster_name + '/files/fullchain.cer', rstrip=False) | string | b64encode }}
+        tls.key: >-
+            {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key', rstrip=False)  | string | b64encode  }}
+      type: kubernetes.io/tls
+
+- name: Patch the Ingress operator to use the certs
+  k8s:
+    state: present
+    definition:
+      apiVersion: operator.openshift.io/v1
+      kind: IngressController
+      metadata:
+        name: default
+        namespace: openshift-ingress-operator
+      spec:
+        defaultCertificate:
+          name: router-certs
+
+- name: Finally remove kubeadmin from kubesystem
+  k8s:
+    state: absent
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: kubeadmin
+        namespace: kube-system
+
+environment:
+K8S_AUTH_KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig
