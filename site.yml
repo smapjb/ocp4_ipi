@@ -2,7 +2,10 @@
 - name: This is a playbook to test out connecting to ovirt
   hosts: localhost
   gather_facts: False
-  
+
+  vars:
+    gateway: gateway.internal.croftvillas.com
+ 
   collections:
     - community.kubernetes
 
@@ -123,6 +126,46 @@
             host: "registry.{{ cluster_name }}.{{ domain_name }}"
             to:
               name: image-registry
+
+    - name: Get the LetsEncrypt certs from CA gateway
+      fetch:
+        src: "/etc/letsencrypt/live/api.{{ cluster_name }}.{{ domain_name }}/{{ item }}"
+        dest: "{{ cluster_name }}/files/"
+        flat: yes  
+      remote_user: root
+      delegate_to: "{{ gateway }}"
+      with_items:
+        - fullchain.cer
+        - "api.{{ cluster_name }}.{{ domain_name }}.key"
+
+    - name: Install the wildcard tls certs
+      k8s:
+        state: present
+        definition:
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: router-certs
+            namespace: openshift-ingress
+          data:
+            tls.crt: >-
+               {{ lookup('file', './' + cluster_name + '/files/fullchain.cer') | b64encode }}
+            tls.key: >-
+               {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key') | b64encode }}
+          type: kubernetes.io/tls
+
+    - name: Patch the Ingress operator to use the certs
+      k8s:
+        state: present
+        definition:
+          apiVersion: operator.openshift.io/v1
+          kind: IngressController
+          metadata:
+            name: default
+            namespace: openshift-ingress-operator
+          spec:
+            defaultCertificate:
+              name: router-certs
 
     - name: Finally remove kubeadmin from kubesystem
       k8s:
