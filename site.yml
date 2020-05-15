@@ -149,9 +149,9 @@
             namespace: openshift-ingress
           data:
             tls.crt: >-
-               {{ lookup('file', './' + cluster_name + '/files/fullchain.cer') | b64encode }}
+               {{ lookup('file', './' + cluster_name + '/files/fullchain.cer') | string | b64encode }}
             tls.key: >-
-               {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key') | b64encode }}
+               {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key') | string | b64encode }}
           type: kubernetes.io/tls
 
     - name: Patch the Ingress operator to use the certs
