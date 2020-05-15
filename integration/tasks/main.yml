@@ -159,6 +159,3 @@
       metadata:
         name: kubeadmin
         namespace: kube-system
-
-environment:
-K8S_AUTH_KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig

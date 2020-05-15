@@ -9,3 +9,6 @@
   roles:
     - provision
     - integration
+  
+  environment:
+    K8S_AUTH_KUBECONFIG: ./{{ cluster_name }}/auth/kubeconfig
