@@ -22,8 +22,8 @@
   - name: Create the objects required to run guest agent as a daemonset
     k8s:
       state: present
-      src: files/guest-agent.yaml
-
+      src: "{{ role_path }}/files/guest-agent.yaml"
+    
   # Note that the result of the merge is that the list is replaced
   - name: Merge list of privileged users into the SCC
     k8s:
