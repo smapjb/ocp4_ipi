@@ -107,7 +107,7 @@
           name: default-route
           namespace: openshift-image-registry
         spec:
-          host: "registry.{{ cluster_name }}.{{ domain_name }}"
+          host: "registry.apps.{{ cluster_name }}.{{ domain_name }}"
           to:
             name: image-registry
 
