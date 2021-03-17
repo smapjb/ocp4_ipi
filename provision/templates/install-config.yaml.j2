@@ -4,13 +4,19 @@ compute:
 - architecture: amd64
   hyperthreading: Enabled
   name: worker
-  platform: {}
-  replicas: 2
+  platform:
+    ovirt:
+      osDisk:
+        sizeGB: 35
+  replicas: 0
 controlPlane:
   architecture: amd64
   hyperthreading: Enabled
   name: master
-  platform: {}
+  platform:
+    ovirt:
+      osDisk:
+        sizeGB: 35
   replicas: 3
 metadata:
   creationTimestamp: null

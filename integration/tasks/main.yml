@@ -12,31 +12,9 @@
         metadata:
           name: cluster
         spec:
-          managementState: Managed
           defaultRoute: true
-          storage:
-            emptyDir: {}
       wait: yes
       wait_timeout: 300
-
-  - name: Create the objects required to run guest agent as a daemonset
-    k8s:
-      state: present
-      src: "{{ role_path }}/files/guest-agent.yaml"
-    
-  # Note that the result of the merge is that the list is replaced
-  - name: Merge list of privileged users into the SCC
-    k8s:
-      state: present
-      definition:
-        kind: SecurityContextConstraints
-        apiVersion: security.openshift.io/v1
-        metadata:
-          name: privileged
-        users:
-        - system:admin
-        - system:serviceaccount:openshift-infra:build-controller
-        - system:serviceaccount:qemu-ga:qemu-ga
 
   - name: Make sure that the ldap user has admin rights
     k8s:
