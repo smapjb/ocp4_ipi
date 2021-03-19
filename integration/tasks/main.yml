@@ -129,6 +129,38 @@
           defaultCertificate:
             name: router-certs
 
+  - name: Install the api certificates
+    k8s:
+      state: present
+      definition:
+        kind: Secret
+        apiVersion: v1
+        metadata:
+          name: api-certs
+          namespace: openshift-config
+        data:
+          tls.crt: >-
+              {{ lookup('file', './' + cluster_name + '/files/fullchain.cer', rstrip=False) | string | b64encode }}
+          tls.key: >-
+              {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key', rstrip=False)  | string | b64encode  }}
+        type: kubernetes.io/tls
+
+  - name: Patch the API server cluster to use the certs
+    k8s:
+      state: present
+      definition:
+        apiVersion: config.openshift.io/v1
+        kind: APIServer
+        metadata:
+          name: cluster
+        spec:
+          servingCerts:
+            namedCertificates:
+            - names:
+              - api.prod.croftvillas.com
+              servingCertificate:
+                name: api-certs
+
   - name: Finally remove kubeadmin from kubesystem
     k8s:
       state: absent
