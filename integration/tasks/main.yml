@@ -89,17 +89,6 @@
           to:
             name: image-registry
 
-  - name: Get the LetsEncrypt certs from CA gateway
-    fetch:
-      src: "/etc/letsencrypt/live/api.{{ cluster_name }}.{{ domain_name }}/{{ item }}"
-      dest: "./{{ cluster_name }}/files/"
-      flat: yes  
-    remote_user: root
-    delegate_to: "{{ gateway }}"
-    with_items:
-      - fullchain.cer
-      - "api.{{ cluster_name }}.{{ domain_name }}.key"
-
   - name: Install the wildcard tls certs
     k8s:
       state: present
@@ -111,7 +100,7 @@
           namespace: openshift-ingress
         data:
           tls.crt: >-
-              {{ lookup('file', './' + cluster_name + '/files/fullchain.cer', rstrip=False) | string | b64encode }}
+              {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '_fullchain.pem', rstrip=False) | string | b64encode }}
           tls.key: >-
               {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key', rstrip=False)  | string | b64encode  }}
         type: kubernetes.io/tls
@@ -140,7 +129,7 @@
           namespace: openshift-config
         data:
           tls.crt: >-
-              {{ lookup('file', './' + cluster_name + '/files/fullchain.cer', rstrip=False) | string | b64encode }}
+              {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '_fullchain.pem', rstrip=False) | string | b64encode }}
           tls.key: >-
               {{ lookup('file', './' + cluster_name + '/files/api.' + cluster_name + '.' + domain_name + '.key', rstrip=False)  | string | b64encode  }}
         type: kubernetes.io/tls
@@ -157,7 +146,7 @@
           servingCerts:
             namedCertificates:
             - names:
-              - api.prod.croftvillas.com
+              - api.{{ cluster_name }}.{{ domain_name }}
               servingCertificate:
                 name: api-certs
 

@@ -3,10 +3,34 @@
   hosts: localhost
   gather_facts: False
 
+  vars:
+    acme_cert_dir: "./{{ cluster_name }}/files/"
+
+    acme_challenge_provider: hetzner
+    acme_use_live_directory: true
+    acme_account_email: "phil@{{ domain_name }}"
+    acme_hetzner_auth_token: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          39656165393335666363386566386464306339373262613564666165633536623263386638633136
+          3839313664633837663530643839613838653463323566610a303866376231366231356230333333
+          35613162313064306263313866666564633066643064383838653166303330633963363232356461
+          3266373566636434630a643239643637366566313564316534656134393462626264653131353439
+          39366236643838343732643831393762623766383334326439303833396461383736356331643466
+          6365383961623134636263366264346431386539346433616262
+    acme_domain:
+      email_address: "phil@{{ domain_name }}"
+      certificate_name: "api.{{ cluster_name }}.{{ domain_name }}"
+      zone: "{{ domain_name }}"
+      subject_alt_name:
+        - "api.{{ cluster_name }}.{{ domain_name }}"
+        - "*.apps.{{ cluster_name }}.{{ domain_name }}"
+
   collections:
     - community.kubernetes
+    - t_systems_mms.acme
 
   roles:
     - provision
+    - acme
     - integration
  
